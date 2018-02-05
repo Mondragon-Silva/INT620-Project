@@ -1,0 +1,195 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US" lang="en-US">
+		<head>
+		<title>[% title %]</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+        <script type="text/javascript" src="/jquery.js"></script>
+        <style>
+	        body{
+            	 width:80%;
+	             margin:auto;
+                 text-align:center;
+                 background-image:url("https://i.pinimg.com/originals/4c/de/3e/4cde3e72bdbc5ed13e5442747f2133fc.jpg");
+                 background-size:cover;
+            }
+            article{
+                left:0;
+                right:0;
+            }
+            header{
+                left:50px;
+                right:0;
+                top:100px;
+                text-shadow:-1px 0 yellow, 0 1px yellow, 1px 0 yellow, 0 -1px yellow;
+                color:blue;
+                font-size:150%;
+            }
+            Label{
+                color:yellow;
+                text-shadow:-1px 0 blue, 0 1px blue, 1px 0 blue, 0 -1px blue;
+                font-size:110%;
+            }
+            #input{
+                margin-left:5%;
+            }
+            .book{
+                top:-4px;
+                right:325px;
+                position:relative;
+            }
+            #book{
+                position:relative;
+                right:-5px;
+                top:5px;
+            }
+            #search{
+                top:-72px;
+                left:-52px;
+                margin-bottom:100px;
+                position:relative;
+                margin-left:66%;
+            }
+            #results{
+                bottom:0px;
+                top:350px;
+                text-align:left;
+                color:yellow;
+                border-style:solid;
+                border-width:2px;
+                border-color:yellow;
+                border-radius:15px;
+            }
+            #pageformat{
+                margin: 0 auto;
+                width:900px;
+                height:100px;
+                overflow:auto;
+            }
+            a{
+                text-align:center;
+                color:yellow;
+                text-decoration:underline;
+                font-size:16pt;
+            }
+            span{
+                text-decoration:underline;
+                font-weight:bold;
+            }
+        </style>
+		</head>
+        <script type="text/javascript">
+            $(document).ready(function(){
+                fixAnchors();
+                $("#form").submit(function(event){
+                    //stop the form from submitting as normal
+                    event.preventDefault();
+                    //clear the dive with the id of results
+                    $("#results").html('');
+                    //get some values from elements on the page
+                    var values = $(this).serialize();
+                    //send the data using a post method and put the results in the div
+                    $.ajax({
+                        url:"",
+                        type:"get",
+                        data: values,
+                        success: function(data){
+                            $("#results").html(data);
+                            $("html,body").animate({scrollTop:($('#results').offset().top)},600);
+                            fixAnchors();
+                        },
+                        error:function(){
+                            alert("failed");
+                            $("#results").html('There is an error while submitting');
+                        }
+                    });
+                });
+
+                $('#login').click(function(){
+                    var logval = $('#login').val();
+                    if(logval == "Login"){
+                        window.location.href =
+                        'http://localhost/dhtml/m3.dhtml?loginbtn=' + logval;
+                        return true;
+                    }else{
+                        return false;
+                    }
+                });
+            });
+
+function fixAnchors(){ 
+    $( "a" ).click(function( anchor ){ 
+        anchor.preventDefault(); 
+           $("#results").html('');
+           $.ajax({
+               url:$( this ).attr( "href" ),
+               type:"get",
+               dataType:"html",
+               success: function( newData ){
+                   fixAnchors();
+                   $("#results").html(newData);
+                   $("html,body").animate({scrollTop:($('#results').offset().top)},600);
+               },
+               error:function(){
+                           alert("Failed");
+                           $("#results").html('There is an error with anchors');
+                       }
+                   });
+               });
+};
+        </script>
+
+<body>
+
+		<section id="first">
+			<header>
+				<h2>[% pageTitle %]</h2>
+			</header>
+
+			<article>
+                <form id="form" method="post" action="" enctype="multipart/form-data">
+                <input id="login" name="loginbtn" value="Login" type="submit">
+				<Label id="input">Keyword Search:
+					<input name="phrase" type="text" size="80">
+                </Label>
+                <br />
+                <Label class=book>What to search:
+                    <select name="book" id="book" >
+						<optgroup label="Section">
+							[% FOREACH sect IN collection %]
+							<option value="[% sect.section %]">
+								[%- sect.sectionName -%]
+							</option>
+							[% END %]
+						</optgroup>
+
+						[% FOREACH sect IN collection %]
+						[% NEXT UNLESS sect.books %]
+						<optgroup label="[% sect.sectionName %]">
+							[% FOREACH book IN sect.books %]
+								<option value="[% book.bnum %]">
+									[%- book.bname -%]
+								</option>
+							[% END %]
+						</optgroup>
+						[% END %]
+					</select>
+                </select>
+            </article>
+    <br><br>
+
+    <div id=search>
+        <input class="button" name="search"    value="Search" type="submit">
+        <input class="button" name="advsearch" value="Advanced Search" type="submit">
+    </div>
+
+    
+    <div id="results">
+    </div>
+
+</form>
+
+
+
+</body>
+</html>

@@ -1,0 +1,40 @@
+        
+        <script type="text/javascript">
+            $(document).ready(function(){
+                fixAnchors();
+            });
+
+function fixAnchors(){ 
+    $( "a" ).click(function( anchor ){ 
+        anchor.preventDefault(); 
+           $("#results").html('');
+           $.ajax({
+               url:$( this ).attr( "href" ),
+               type:"get",
+               dataType:"html",
+               success: function( newData ){
+                   fixAnchors();
+                   $("#results").html(newData);
+                   $("html,body").animate({scrollTop:($('#results').offset().top)},600);
+               },
+               error:function(){
+                           alert("Failed");
+                           $("#results").html('There is an error with anchors');
+                       }
+                   });
+               });
+};
+        </script>
+        [% FOREACH text IN results %]
+            <p><span>[% text.bname %] | [% text.cnum %] : [% text.vnum %]</span></p>
+            <p>[% text.vtext %]</p>
+        [% END %]
+        
+        <center>
+        [% FOREACH ref IN uris -%]
+            [% IF ref.page == input.page %]
+                [% ref.page %]
+            [% ELSE %]
+                <a name="rpage" href="[% ref.uri  %]">[% ref.page %]</a>
+            [% END %]
+        [% END %]

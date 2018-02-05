@@ -1,0 +1,83 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US" lang="en-US">
+		<head>
+		<title>Admin Page</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+        <script type="text/javascript" src="/jquery.js"></script>
+        <style>
+	        body{
+            	 width:80%;
+	             margin:auto;
+                 text-align:center;
+                 background-image:url("https://i.pinimg.com/originals/4c/de/3e/4cde3e72bdbc5ed13e5442747f2133fc.jpg");
+                 background-size:cover;
+            }
+            article{
+                left:0;
+                right:0;
+            }
+            header{
+                left:50px;
+                right:0;
+                top:100px;
+                text-shadow:-1px 0 yellow, 0 1px yellow, 1px 0 yellow, 0 -1px yellow;
+                color:blue;
+                font-size:150%;
+            }
+            Label{
+                color:yellow;
+                text-shadow:-1px 0 blue, 0 1px blue, 1px 0 blue, 0 -1px blue;
+                font-size:110%;
+            }
+            th,td{
+                border-style:solid;
+                border-width:1px;
+                background-color:white;
+                font-color:blue;
+                font-size:18pt;
+                border-radius:4px;
+            }
+            table{
+                background-color:yellow;
+            }
+        </style>
+		</head>
+
+<body>
+
+			<header>
+				<h2>INT620 Admin Page</h2>
+			</header>
+				<center>
+                <form id="form" method="post" action="" enctype="multipart/form-data">
+                <table>
+                <tr>
+                    <th>User ID</th>
+                    <th>FirstName</th>
+                    <th>LastName</th>
+                    <th>UserName</th>
+                    <th>Password</th>
+                    <th>Phone Number</th>
+                    <th>Date Registered</th>
+                </tr>
+                [% FOREACH user IN users %]
+                <tr>
+                    <td>[% user.ID %]</td>
+                    <td>[% user.FirstName %]</td>
+                    <td>[% user.LastName %]</td>
+                    <td>[% user.UserName %]</td>
+                    <td>[% user.Password %]</td>
+                    <td>[% user.Phone %]</td>
+                    <td>[% user.RegisterDate %]</td>
+                </tr>
+                [% END %]
+
+
+                </table>
+
+                </form>
+
+
+</body>
+</html>

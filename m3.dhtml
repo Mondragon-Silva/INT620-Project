@@ -1,0 +1,357 @@
+#!/usr/bin/perl
+#!/usr/local/bin/perl  
+###############################################
+# first example using templating, xhtml and css
+# © ckaduri, 2002-2016
+# version 0.9g
+#
+##############################################
+
+use strict;
+use Template;   #step 1
+use DBI;
+use CGI;
+use POSIX;
+our $templatelib;
+use CGI qw(:debug);
+use Apache::Session::MySQL;
+
+
+#############################################
+# precompile inspection
+# ###########################################
+BEGIN {
+	if($ENV{TEMPLATELIB}){
+	  $templatelib=$ENV{TEMPLATELIB};
+	}
+	else{
+	  $templatelib='/export/srv/www/main/tt2';
+	}
+}
+
+################################ 
+## Declaration of Variables   ##
+################################
+my(
+	$template,
+    $template2,
+    $templatef,
+	$ttObject, 
+	$cgiObject, 
+	$pageTitle,
+	$vars,
+	$title,
+    $sqlObject,
+    $sqlSelect,
+    $sqlSelectbooks,
+    $sqlSectionSelect,
+	@bnumCheck,
+    %bsectCheck
+    );
+my($debug)=0;
+##############################################
+# Database declarations
+# ###########################################
+my $dbName="bible";
+my $host="localhost";
+my $port=3306;
+my $dsn=("DBI:mysql:$dbName:$host:$port");
+my $user="web";
+my $password="nouser";
+my @collection;
+
+my $recordCount;
+my $count;
+my $totalPages;
+my $recordsPerPage = 10;
+my $dbOffset;
+my $page;
+my $sqlSearchString;
+my $uri;
+my %input;
+my @uris;
+my @results;
+my $currentPage;
+my $lastPage;
+
+#user variable declarations
+my @users;
+my $sqlUsers;
+my %userInfo = {};
+
+
+###################################################################################
+#create new cgi object and place all the form information within a hash variable
+$cgiObject = new CGI;
+%input=$cgiObject->Vars();
+
+
+###############################################
+# setup constants
+# #############################################
+use constant TEMPLATELIB => $templatelib;
+    
+#########################
+# Generate Magic Header #
+#########################
+print STDOUT $cgiObject->header(-type=>"text/html",-charset=>'utf8');
+
+#############################################
+# Database Connection
+# ###########################################
+my $dbObject = DBI->connect($dsn,$user,$password,
+	{PrintError => 0, RaiseError => 1}
+) or warn("Can't connect to Database $dbName:$host");
+
+
+	#setup hardcoded default collection section
+	$collection[0]={
+		sectionName=>"Entire Collection",
+		section=>"All"
+	};
+
+        #sql user selection
+        $sqlUsers=qq/
+            SELECT ID,FirstName,LastName,UserName,Password,Phone,RegisterDate
+            FROM users
+            ORDER BY ID ASC;
+        /;
+        #prepare sql statement
+        $sqlObject = $dbObject->prepare($sqlUsers)
+            or die "Couldn't create SQL object $dbObject::errstr\n";
+        #execute statement
+        $sqlObject->execute();
+        #store records in array of hashes
+        while(my $ref=$sqlObject->fetchrow_hashref() ){
+            push( @users, $ref);
+        }
+
+
+if($input{loginbtn} eq "Login"){
+
+    unless($input{uname}){
+        $template = 'termprojlogin.tt2';
+    }elsif($input{loginbtn} eq "Login"){
+        
+        #access array of hashes to check for valid admin credentials
+        if($input{uname} eq $users[0]{UserName} and $input{pass} eq $users[0]{Password}){
+            $template = 'termprojadmin.tt2';
+        }else{
+            $template = 'termprojlogin.tt2';
+        }
+    }
+
+}else{
+    unless($input{phrase}){
+        #############################################
+		#       Milestone 1 list creation
+		#############################################
+        
+		#select statement to extract section data
+		$sqlSectionSelect=qq/
+			SELECT bsect AS section, sectname AS sectionName
+			FROM section
+			ORDER BY sectorder ASC;
+			/;
+        
+		#set up preparing select sql object for section#
+		$sqlObject=$dbObject->prepare($sqlSectionSelect)
+			or die "couldn't create SQL object $dbObject::errstr\n";
+		$sqlObject->execute();
+
+		#looping for to store data as a pointer reference into collection array#
+		while(my $ref=$sqlObject->fetchrow_hashref()){
+			push( @collection, $ref);
+		    $bsectCheck{ $ref->{bsect} } = 1;
+		}
+         
+		#set up select statement to extract book data(number, name)
+		$sqlSelectbooks = qq/
+			SELECT bnum, bname FROM books
+			WHERE bsect = ?
+			ORDER BY bnum;
+			/;
+        
+		#set up preparing select sql object
+		$sqlObject=$dbObject->prepare($sqlSelectbooks)
+			or die "couldn't create SQL object $dbObject::errstr\n";
+        
+		#looping for referencing
+		    SECTION: foreach my $bref (@collection){
+			    my $bsect=$bref->{section};
+			    next SECTION if ($bsect eq 'All');
+			    $sqlObject->execute($bsect) or die "Couldn't execute query";
+            
+            
+			    while(my $ref=$sqlObject->fetchrow_hashref()){
+		            push( @{ $bref->{books} }, $ref);
+		            $bnumCheck[$ref->{bnum} ] = 1;
+			    }
+		    }
+ 	            $template = 'm3form.tt2';
+    }else{
+		########################################################################
+		#                           MileStone 2 
+		#######################################################################
+        #Query Variable Declarations
+		my $fields=qq/bsect,bname,bnum,cnum,vnum,vtext/;
+		my $whereBook;
+		my $booleanMode;
+		my $match=qq/MATCH(vtext) AGAINST (? $booleanMode)/;
+		my $table=qq/kjv/;
+		my $order=qq/ORDER BY relevance DESC, bnum ASC, cnum ASC, vnum ASC/;
+		my $sqlQuerySearch;
+		my $limit;
+    
+		#check if user selects boolean mode
+		if($input{advsearch}){
+		    $booleanMode=qq/IN BOOLEAN MODE/;
+		    $match=qq/MATCH(vtext) AGAINST (? $booleanMode)/;
+		}
+    
+		#setting the where book scalar
+		if( $bsectCheck{ $input{'book'} } ){
+		    $whereBook="AND bsect = '$input{book}' ";
+		}elsif( $bnumCheck[ $input{'book'} ] ){
+		    $whereBook="AND bnum = '$input{book}' ";
+		}else{
+		    $whereBook= "";    
+		}
+    
+    
+		########################################################################
+		#               Milestone 2 - paging section
+		########################################################################
+		$recordsPerPage=10;
+		$uri=$cgiObject->self_url();
+    
+		#kluge until sessions
+		%bsectCheck=(O=>1, N=>1);
+		foreach my $bnum (1..66){
+		   $bnumCheck[$bnum]=1;
+		}
+    
+		#find amount of records
+		$recordCount = qq/SELECT COUNT(*) FROM $table WHERE $match $whereBook;/;
+		$count=$dbObject->selectrow_array($recordCount,undef,$input{phrase});
+    
+		#Find Total Pages
+		$totalPages = ceil($count/$recordsPerPage);
+    
+		if($input{page} > 0 && $input{page} <= $totalPages){
+		    $currentPage=$input{page};
+		}else{
+		    $currentPage=1;
+		}
+		#set offset
+		$dbOffset = (($currentPage - 1) * $recordsPerPage);
+    
+		#set limit constraint
+		$limit=qq/LIMIT $dbOffset,$recordsPerPage/;
+    
+		#Paging process
+		@uris=prepareUris($currentPage,$totalPages,$uri); 
+    
+		################################################################################
+		#                   Database search Section (Milestone 2)
+		################################################################################
+		#create scalar to store select statement for searching
+		$sqlQuerySearch=qq/
+		    SELECT $fields, $match AS relevance
+		    FROM $table
+		    WHERE $match
+		    $whereBook
+		    $order
+		    $limit
+		    /;
+		    #prepare statement
+		    $sqlObject=$dbObject->prepare($sqlQuerySearch)
+		        or die "couldn't create SQL object $dbObject::errstr\n";
+		    #execute statement with both placeholders being passed from the form
+		    $sqlObject->execute($input{phrase}, $input{phrase})
+		        or die "couldn't execute query searchh $dbObject::errstr\n";
+		    #loop through results and store within results array
+		    while(my $ref=$sqlObject->fetchrow_hashref()){
+		        push(@results, $ref);
+		    }
+		    $sqlObject->finish();
+ 	       $template = 'm3results.tt2';
+    }
+}  
+
+        ############################################################################
+		#                               END OF CODING SECTION                      #
+		############################################################################
+
+		################################ 
+		## New Template Object	      ##
+		################################
+		my %config=(
+			INCLUDE_PATH => [ $templatelib ],
+		    	RELATIVE => 0
+		    );
+		$ttObject = Template->new( \%config );
+
+		###################################### 
+		## Page titles                      ##
+		######################################
+		$pageTitle=("KJV Bible Search");
+		$title=("M3: Bible Search");
+
+		###################################### 
+		## Prep vars for template (step 4a) ##
+		######################################
+		$vars = {
+			title => $title,
+		    pageTitle => $pageTitle,
+			collection => \@collection,
+		    results => \@results,
+		    input => \%input,
+		    uris => \@uris,
+            users => \@users
+		};
+
+		###################################### 
+		## Bind and pass flow (step 4b + 5) ##
+		######################################
+        $ttObject->process ( $template, $vars ) 
+		    or die( $ttObject->error() );
+                
+		######################################
+
+		################################################################################
+		#               Subroutines Section
+		################################################################################
+
+
+		sub prepareUris{
+		    my($currentPage,$totalPages,$uri)=@_;
+		    $uri=~s/;page=(\d*)//; #stripping page if there is one
+		    my(@uris,$i);
+		    
+		    my $shoulder=3;
+		    
+		    push(@uris,{page=>'|<',uri=>"$uri;page=1"})if
+		        ( ( ($currentPage-$shoulder)-1) > 1 );
+
+		    push(@uris,{page=>'<',uri=>"$uri;page=".( $currentPage-$shoulder-1)}) if
+		        ( ($currentPage-($shoulder*2) ) > 1);
+		    
+		    PAGE: foreach my $page ( ($currentPage-$shoulder)..($currentPage+$shoulder) ){
+		        next PAGE if $page < 1;
+		        last PAGE if $page > $totalPages;
+		        push(@uris,{page=>$page,uri=>"$uri;page=$page"});
+		    }
+		    
+		    push(@uris,{page=>'>',uri=>"$uri;page=" . ($currentPage+$shoulder+1) }) if
+		        ( ($currentPage+($shoulder*2))<=$totalPages );
+		    push(@uris,{page=>'>|',uri=>"$uri;page=$totalPages"}) if
+		        ( ($currentPage+$shoulder)<=($totalPages-1) );
+		    
+
+		    return (@uris);   
+
+		}
+
+
+__END__

@@ -1,0 +1,71 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US" lang="en-US">
+		<head>
+		<title>Login Form</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+        <script type="text/javascript" src="/jquery.js"></script>
+        <style>
+	        body{
+            	 width:80%;
+	             margin:auto;
+                 text-align:center;
+                 background-image:url("https://i.pinimg.com/originals/4c/de/3e/4cde3e72bdbc5ed13e5442747f2133fc.jpg");
+                 background-size:cover;
+            }
+            article{
+                left:0;
+                right:0;
+            }
+            header{
+                left:50px;
+                right:0;
+                top:100px;
+                text-shadow:-1px 0 yellow, 0 1px yellow, 1px 0 yellow, 0 -1px yellow;
+                color:blue;
+                font-size:150%;
+            }
+            Label{
+                color:yellow;
+                text-shadow:-1px 0 blue, 0 1px blue, 1px 0 blue, 0 -1px blue;
+                font-size:110%;
+            }
+        </style>
+		</head>
+
+        <script>
+            $(document).ready(function(){
+                $('#login').on('click',function(){
+                    var lognval = $('#login').val();
+                    var userval = $('#uname').val();
+                    var passval = $('#pass').val();
+                    if(lognval == "Login"){
+                        window.location.href = 'http://localhost/dhtml/m3.dhtml?loginbtn='+lognval+';uname='+userval+';pass='+passval;
+                        return true;
+                     }else{
+                        alert("failed");
+                        return false;
+                     }
+                });
+            });
+        </script>
+
+<body>
+
+			<header>
+				<h2>INT620 Login Page</h2>
+			</header>
+				<center>
+                <form id="form" method="post" action="" enctype="multipart/form-data">
+					
+                    <Label>Username: <input type="text" id="uname" name="uname"></Label>
+                    <br><br>
+                    <Label>Password: <input type="password" id="pass" name="pass"></Label>
+                    
+                    <br><br>
+                    <input id="login" class="button" name="loginbtn" value="Login" type="submit">
+                </form>
+
+
+</body>
+</html>
